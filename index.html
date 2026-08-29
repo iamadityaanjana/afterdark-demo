@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Globe demo</title>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="globe">
+        <div class="globe__canvas"></div>
+      </div>
+    </div>
+    <div class="hover-ui">
+      <button class="hover-ui__toggle" type="button" aria-expanded="false">
+        Hover · Ripple
+      </button>
+      <ul class="hover-ui__list" hidden></ul>
+    </div>
+    <aside class="ctrl" id="ctrl">
+      <button class="ctrl__view" type="button">Switch View</button>
+      <section class="ctrl__section" data-section="corona">
+        <button class="ctrl__heading" type="button">
+          Stellar Corona
+          <span class="ctrl__fold" aria-hidden="true">()</span>
+        </button>
+        <div class="ctrl__body">
+          <label class="ctrl__row">
+            <span>Strength</span>
+            <input type="range" data-key="displFactor" min="0" max="0.01" step="0.0001" />
+            <input type="number" data-key="displFactor" min="0" max="0.01" step="0.0001" />
+          </label>
+          <label class="ctrl__row">
+            <span>Expand</span>
+            <input type="range" data-key="expandFactor" min="0" max="2" step="0.01" />
+            <input type="number" data-key="expandFactor" min="0" max="2" step="0.01" />
+          </label>
+          <label class="ctrl__row">
+            <span>Noise Seed</span>
+            <input type="range" data-key="noiseSeed" min="1" max="10000" step="1" />
+            <input type="number" data-key="noiseSeed" min="1" max="10000" step="1" />
+          </label>
+          <label class="ctrl__row">
+            <span>Noise Scale</span>
+            <input type="range" data-key="noiseScale" min="1" max="20" step="0.01" />
+            <input type="number" data-key="noiseScale" min="1" max="20" step="0.01" />
+          </label>
+          <label class="ctrl__row">
+            <span>Noise Speed</span>
+            <input type="range" data-key="noiseSpeed" min="0" max="0.2" step="0.001" />
+            <input type="number" data-key="noiseSpeed" min="0" max="0.2" step="0.001" />
+          </label>
+        </div>
+      </section>
+      <section class="ctrl__section" data-section="color">
+        <button class="ctrl__heading" type="button">
+          Color
+          <span class="ctrl__fold" aria-hidden="true">()</span>
+        </button>
+        <div class="ctrl__body">
+          <label class="ctrl__row ctrl__row--color">
+            <span>Primary</span>
+            <input type="color" data-key="color1" />
+            <input type="text" data-key="color1" spellcheck="false" />
+          </label>
+          <label class="ctrl__row ctrl__row--color">
+            <span>Secondary</span>
+            <input type="color" data-key="color2" />
+            <input type="text" data-key="color2" spellcheck="false" />
+          </label>
+        </div>
+      </section>
+    </aside>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
