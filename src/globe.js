@@ -101,6 +101,7 @@ export class AfterDarkGlobe {
     this.rtSize = 512;
     this.shaderSize = 512;
     this.frameCount = 0;
+    this._maskKey = "";
     this._onResize = () => this.resize();
     this.init();
   }
@@ -125,6 +126,7 @@ export class AfterDarkGlobe {
 
   applyParams() {
     const p = this.params;
+    const mouseOn = p.mouseInteract ? 1 : 0;
     const noise = this.noiseMaterial?.uniforms;
     const corona = this.coronaMaterial?.uniforms;
     const blend = this.blendMaterial?.uniforms;
@@ -132,14 +134,71 @@ export class AfterDarkGlobe {
       noise.noiseSeed.value = p.noiseSeed;
       noise.noiseScale.value = p.noiseScale;
       noise.noiseSpeed.value = p.noiseSpeed;
+      noise.noiseEvolveSpeed.value = p.noiseEvolveSpeed;
+      noise.uMouseEnabled.value = mouseOn;
+      noise.uMouseStrength.value = p.mouseStrength;
+      noise.uMouseRadius.value = p.mouseRadius;
     }
     if (corona) {
       corona.uDisplaceFactor.value = p.displFactor;
       corona.uExpandFactor.value = p.expandFactor;
+      corona.uMixFactor.value = p.mixFactor;
+      corona.uScaleFactor.value = p.scaleFactor;
+      corona.uMouseEnabled.value = mouseOn;
+      corona.uMouseStrength.value = p.mouseStrength;
+      corona.uMouseRadius.value = p.mouseRadius;
     }
     if (blend) {
       blend.uColor1.value.set(p.color1);
       blend.uColor2.value.set(p.color2);
+      blend.uBackgroundColor.value.set(p.background);
+      blend.levelsBlack.value = p.levelsBlack;
+      blend.levelsWhite.value = p.levelsWhite;
+      blend.gamma.value = p.gamma;
+      blend.mapStrength.value = p.mapStrength;
+      blend.sphereInvert.value = p.sphereInvert;
+      blend.sphereAdd.value = p.sphereAdd;
+      blend.mapBlur.value = p.mapBlur;
+      blend.innerNoiseAmount.value = p.innerNoiseAmount;
+      blend.innerNoiseBlur.value = p.innerNoiseBlur;
+      blend.innerNoiseBlack.value = p.innerNoiseBlack;
+      blend.innerNoiseWhite.value = p.innerNoiseWhite;
+      blend.innerNoiseGamma.value = p.innerNoiseGamma;
+      blend.landBoost.value = p.landBoost;
+    }
+    if (this.scene) this.scene.background.set(p.background);
+    if (this.renderer) this.renderer.setClearColor(p.background, 1);
+    this.syncLayout();
+  }
+
+  syncLayout() {
+    if (!this.camera) return;
+    const ortho = this.getOrthoSize();
+    if (Math.abs(ortho - this.params.cameraOrthoSize) > 1e-5) {
+      this.params.cameraOrthoSize = ortho;
+      this.resize();
+      if (this.globeCam) {
+        this.globeCam.left = -ortho;
+        this.globeCam.right = ortho;
+        this.globeCam.top = ortho;
+        this.globeCam.bottom = -ortho;
+        this.globeCam.updateProjectionMatrix();
+      }
+    }
+    this.rebuildSphereMasksIfNeeded();
+  }
+
+  rebuildSphereMasksIfNeeded() {
+    const key = `${this.params.globeCover}|${this.params.sphereMaskBlur}|${this.params.globeRadius}`;
+    if (key === this._maskKey) return;
+    this._maskKey = key;
+    this.sphereSharp?.dispose();
+    this.sphereBlur?.dispose();
+    this.buildSphereMasks();
+    if (this.coronaMaterial) this.coronaMaterial.uniforms.iGlobeSphere.value = this.sphereBlur;
+    if (this.blendMaterial) {
+      this.blendMaterial.uniforms.tGlobeSphere.value = this.sphereBlur;
+      this.blendMaterial.uniforms.tGlobeSphereSharp.value = this.sphereSharp;
     }
   }
 
@@ -238,6 +297,7 @@ export class AfterDarkGlobe {
     this.sphereBlur = new THREE.CanvasTexture(blur);
     this.sphereSharp.minFilter = this.sphereBlur.minFilter = THREE.LinearFilter;
     this.sphereSharp.magFilter = this.sphereBlur.magFilter = THREE.LinearFilter;
+    this._maskKey = `${this.params.globeCover}|${this.params.sphereMaskBlur}|${this.params.globeRadius}`;
   }
 
   buildMaterials() {
@@ -533,7 +593,8 @@ export class AfterDarkGlobe {
   updateTrail(dt) {
     const ctx = this.trailCtx;
     const size = this.trailCanvas.width;
-    const decay = 1 - Math.exp(-2.4 * Math.max(dt, 1 / 120));
+    const persist = THREE.MathUtils.clamp(this.params.trailAmount, 0, 1);
+    const decay = (1 - Math.exp(-2.4 * Math.max(dt, 1 / 120))) * (1.2 - persist);
     ctx.globalCompositeOperation = "source-over";
     ctx.fillStyle = `rgba(0,0,0,${decay})`;
     ctx.fillRect(0, 0, size, size);
@@ -546,7 +607,7 @@ export class AfterDarkGlobe {
     const px = x * size;
     const py = y * size;
     ctx.lineCap = "round";
-    ctx.strokeStyle = `rgba(255,255,255,${0.12 + this.mouseSpeed * 0.22})`;
+    ctx.strokeStyle = `rgba(255,255,255,${0.08 + persist * 0.28 + this.mouseSpeed * 0.22})`;
     ctx.lineWidth = Math.max(4, this.params.mouseRadius * size * 0.7);
     ctx.filter = "blur(3px)";
     if (this.trailPrev) {
@@ -631,10 +692,13 @@ export class AfterDarkGlobe {
     this.mouseSpeed *= Math.exp(-3.2 * dt);
     this.mouseDir.multiplyScalar(Math.exp(-4.0 * dt));
 
+    const mouseOn = this.params.mouseInteract ? 1 : 0;
     this.noiseMaterial.uniforms.u_mouseSpeed.value = this.mouseSpeed;
     this.coronaMaterial.uniforms.u_mouseSpeed.value = this.mouseSpeed;
+    this.coronaMaterial.uniforms.uMouseEnabled.value = mouseOn;
     this.coronaMaterial.uniforms.uMouseStrength.value = this.params.mouseStrength;
     this.coronaMaterial.uniforms.uMouseRadius.value = this.params.mouseRadius;
+    this.noiseMaterial.uniforms.uMouseEnabled.value = mouseOn;
     this.noiseMaterial.uniforms.uMouseStrength.value = this.params.mouseStrength;
     this.noiseMaterial.uniforms.uMouseRadius.value = this.params.mouseRadius;
 
